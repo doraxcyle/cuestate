@@ -131,16 +131,18 @@ struct transition final {
     using event = Event;
     using target_state = TargetState;
 
-    static void on(const Event& event) {
+    static bool on(const Event& event) {
         if constexpr (std::is_same_v<decltype(Guard), std::nullptr_t>) {
             Action(event);
+            return true;
         } else {
             if (Guard) {
                 if (!Guard(event)) {
-                    return;
+                    return false;
                 }
             }
             Action(event);
+            return true;
         }
     }
 };
@@ -194,12 +196,15 @@ class machine final {
 
     template <typename T, typename... Args, typename Event>
     struct dispatcher<std::tuple<T, Args...>, Event> {
-        static std::size_t on(std::size_t state_index, const Event& event) {
+        static bool on(std::size_t& state_index, const Event& event) {
             constexpr auto index = detail::type_index_v<typename T::current_state, states>;
             if (index == state_index) {
-                T::on(event);
-                constexpr auto target_state = detail::type_index_v<typename T::target_state, states>;
-                return target_state;
+                if (T::on(event)) {
+                    constexpr auto target_state = detail::type_index_v<typename T::target_state, states>;
+                    state_index = target_state;
+                    return true;
+                }
+                return false;
             }
 
             return dispatcher<std::tuple<Args...>, Event>::on(state_index, event);
@@ -208,9 +213,9 @@ class machine final {
 
     template <typename Event>
     struct dispatcher<std::tuple<>, Event> {
-        static std::size_t on(std::size_t state_index, const Event&) {
+        static bool on(std::size_t& state_index, const Event&) {
             // no transition
-            return state_index;
+            return false;
         }
     };
 
@@ -219,9 +224,9 @@ public:
     ~machine() = default;
 
     template <typename Event>
-    void on(const Event& event) {
+    bool on(const Event& event) {
         using transitions = select_transitions_t<typename transition_table::transitions, Event>;
-        this->state_index_ = dispatcher<transitions, Event>::on(this->state_index_, event);
+        return dispatcher<transitions, Event>::on(this->state_index_, event);
     }
 
     template <typename State>
