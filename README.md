@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
     assert(robot.is(closed{}));
     robot.on(open{});
     assert(robot.is(opened{}));
-    robot.on(walk{ .is_ready_ = true, .distance_ = 5 });
+    robot.on(walk{.is_ready_ = true, .distance_ = 5});
     assert(robot.is(walking{}));
     robot.on(stop{});
     assert(robot.is(opened{}));

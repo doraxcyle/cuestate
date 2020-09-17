@@ -28,6 +28,9 @@ namespace state {
 
 namespace detail {
 
+template <typename T>
+concept is_null = std::is_null_pointer_v<T>;
+
 template <typename... Args>
 struct concat;
 
@@ -132,7 +135,7 @@ struct transition final {
     using target_state = TargetState;
 
     static bool on(const Event& event) {
-        if constexpr (std::is_same_v<decltype(Guard), std::nullptr_t>) {
+        if constexpr (detail::is_null<decltype(Guard)>) {
             Action(event);
             return true;
         } else {
@@ -154,7 +157,20 @@ struct table final {
     using transitions = std::tuple<Args...>;
 };
 
-template <typename Machine>
+template <typename T>
+concept machine_t = requires {
+    typename T::initial_state;
+    typename T::transition_table;
+    typename T::transition_table::transitions;
+};
+
+template <typename T>
+concept transtion_t = requires {
+    typename T::current_state;
+    typename T::target_state;
+};
+
+template <machine_t Machine>
 class machine final {
     using initial_state = typename Machine::initial_state;
     using transition_table = typename Machine::transition_table;
@@ -194,7 +210,7 @@ class machine final {
     template <typename Transitions, typename Event>
     struct dispatcher;
 
-    template <typename T, typename... Args, typename Event>
+    template <transtion_t T, typename... Args, typename Event>
     struct dispatcher<std::tuple<T, Args...>, Event> {
         static bool on(std::size_t& state_index, const Event& event) {
             constexpr auto index = detail::type_index_v<typename T::current_state, states>;
@@ -230,8 +246,9 @@ public:
     }
 
     template <typename State>
-    bool is(const State& state) const {
+    bool is(const State& state) const noexcept {
         static_assert(detail::has_type_v<states, State>, "transtion table have no event");
+
         constexpr auto index = detail::type_index_v<State, states>;
         return index == this->state_index_;
     }
