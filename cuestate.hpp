@@ -28,208 +28,212 @@ namespace state {
 
 namespace detail {
 
-template <typename T>
-concept is_null = std::is_null_pointer_v<T>;
+template <typename _Ty>
+concept is_null = std::is_null_pointer_v<_Ty>;
 
-template <typename... Args>
+template <typename... _Args>
 struct concat;
 
-template <typename T, typename... Args>
-struct concat<T, std::tuple<Args...>> {
-    using type = std::tuple<T, Args...>;
+template <typename _Ty, typename... _Args>
+struct concat<_Ty, std::tuple<_Args...>> {
+    using type = std::tuple<_Ty, _Args...>;
 };
 
-template <typename T>
-struct concat<T> {
-    using type = std::tuple<T>;
+template <typename _Ty>
+struct concat<_Ty> {
+    using type = std::tuple<_Ty>;
 };
 
-template <typename... Args>
-using concat_t = typename concat<Args...>::type;
+template <typename... _Args>
+using concat_t = typename concat<_Args...>::type;
 
-template <typename... Args>
+template <typename... _Args>
 struct concat_tuple;
 
-template <typename... LArgs, typename... RArgs>
-struct concat_tuple<std::tuple<LArgs...>, std::tuple<RArgs...>> {
-    using type = std::tuple<LArgs..., RArgs...>;
+template <typename... _LArgs, typename... _RArgs>
+struct concat_tuple<std::tuple<_LArgs...>, std::tuple<_RArgs...>> {
+    using type = std::tuple<_LArgs..., _RArgs...>;
 };
 
-template <typename... Args>
-using concat_tuple_t = typename concat_tuple<Args...>::type;
+template <typename... _Args>
+using concat_tuple_t = typename concat_tuple<_Args...>::type;
 
-template <template <typename> class Predicate, typename... Args>
+template <template <typename> class _Predicate, typename... _Args>
 struct select_types;
 
-template <template <typename> class Predicate, typename T, typename... Args>
-struct select_types<Predicate, T, Args...> {
-    using type = std::conditional_t<Predicate<T>::value, concat_t<T, typename select_types<Predicate, Args...>::type>,
-                                    typename select_types<Predicate, Args...>::type>;
+template <template <typename> class _Predicate, typename _Ty, typename... _Args>
+struct select_types<_Predicate, _Ty, _Args...> {
+    using type =
+        std::conditional_t<_Predicate<_Ty>::value, concat_t<_Ty, typename select_types<_Predicate, _Args...>::type>,
+                           typename select_types<_Predicate, _Args...>::type>;
 };
 
-template <template <typename> class Predicate>
-struct select_types<Predicate> {
+template <template <typename> class _Predicate>
+struct select_types<_Predicate> {
     using type = std::tuple<>;
 };
 
-template <template <typename> class Predicate, typename... Args>
-using select_types_t = typename select_types<Predicate, Args...>::type;
+template <template <typename> class _Predicate, typename... _Args>
+using select_types_t = typename select_types<_Predicate, _Args...>::type;
 
-template <typename Tuple, typename T>
+template <typename _Tuple, typename _Ty>
 struct has_type;
 
-template <typename Head, typename... Args, typename T>
-struct has_type<std::tuple<Head, Args...>, T> : has_type<std::tuple<Args...>, T> {};
+template <typename _Head, typename... _Args, typename _Ty>
+struct has_type<std::tuple<_Head, _Args...>, _Ty> : has_type<std::tuple<_Args...>, _Ty> {};
 
-template <typename... Args, typename T>
-struct has_type<std::tuple<T, Args...>, T> : std::true_type {};
+template <typename... _Args, typename _Ty>
+struct has_type<std::tuple<_Ty, _Args...>, _Ty> : std::true_type {};
 
-template <typename T>
-struct has_type<std::tuple<>, T> : std::false_type {};
+template <typename _Ty>
+struct has_type<std::tuple<>, _Ty> : std::false_type {};
 
-template <typename Tuple, typename T>
-inline constexpr bool has_type_v = has_type<Tuple, T>::value;
+template <typename _Tuple, typename _Ty>
+inline constexpr bool has_type_v = has_type<_Tuple, _Ty>::value;
 
-template <typename Out, typename In>
+template <typename _Ty, typename _Arg>
 struct unique_type;
 
-template <typename... Out, typename T, typename... Args>
-struct unique_type<std::tuple<Out...>, std::tuple<T, Args...>> {
-    using type = std::conditional_t<has_type_v<std::tuple<Out...>, T>,
-                                    typename unique_type<std::tuple<Out...>, std::tuple<Args...>>::type,
-                                    typename unique_type<std::tuple<Out..., T>, std::tuple<Args...>>::type>;
+template <typename... _Ts, typename _Head, typename... _Args>
+struct unique_type<std::tuple<_Ts...>, std::tuple<_Head, _Args...>> {
+    using type = std::conditional_t<has_type_v<std::tuple<_Ts...>, _Head>,
+                                    typename unique_type<std::tuple<_Ts...>, std::tuple<_Args...>>::type,
+                                    typename unique_type<std::tuple<_Ts..., _Head>, std::tuple<_Args...>>::type>;
 };
 
-template <typename Out>
-struct unique_type<Out, std::tuple<>> {
-    using type = Out;
+template <typename _Ty>
+struct unique_type<_Ty, std::tuple<>> {
+    using type = _Ty;
 };
 
-template <typename Out, typename In>
-using unique_type_t = typename unique_type<Out, In>::type;
+template <typename _Ty, typename _Arg>
+using unique_type_t = typename unique_type<_Ty, _Arg>::type;
 
-template <typename T>
-using unique_type_tuple = unique_type_t<std::tuple<>, T>;
+template <typename _Ty>
+using unique_type_tuple = unique_type_t<std::tuple<>, _Ty>;
 
-template <typename T, typename Tuple>
+template <typename _Ty, typename _Tuple>
 struct type_index;
 
-template <typename T, typename... Args>
-struct type_index<T, std::tuple<T, Args...>> : public std::integral_constant<std::size_t, 0> {};
+template <typename _Ty, typename... _Args>
+struct type_index<_Ty, std::tuple<_Ty, _Args...>> : public std::integral_constant<std::size_t, 0> {};
 
-template <typename T, typename U, typename... Args>
-struct type_index<T, std::tuple<U, Args...>>
-    : public std::integral_constant<std::size_t, 1 + type_index<T, std::tuple<Args...>>{}> {};
+template <typename _Ty, typename _Head, typename... _Args>
+struct type_index<_Ty, std::tuple<_Head, _Args...>>
+    : public std::integral_constant<std::size_t, 1 + type_index<_Ty, std::tuple<_Args...>>{}> {};
 
-template <typename T, typename Tuple>
-inline constexpr std::size_t type_index_v = type_index<T, Tuple>::value;
+template <typename _Ty, typename _Tuple>
+inline constexpr std::size_t type_index_v = type_index<_Ty, _Tuple>::value;
 
 } // namespace detail
 
-template <typename CurrentState, typename Event, typename TargetState, auto Action, auto Guard = nullptr>
+template <typename _CurrentState, typename _Event, typename _TargetState, auto _Action, auto _Guard = nullptr>
 struct transition final {
-    static_assert(!std::is_same_v<CurrentState, TargetState>, "same states");
+    static_assert(!std::is_same_v<_CurrentState, _TargetState>, "same states");
 
-    using current_state = CurrentState;
-    using event = Event;
-    using target_state = TargetState;
+    using current_state = _CurrentState;
+    using event = _Event;
+    using target_state = _TargetState;
 
-    static bool on(const Event& event) {
-        if constexpr (detail::is_null<decltype(Guard)>) {
-            Action(event);
+    static bool on(const _Event& event) {
+        if constexpr (detail::is_null<decltype(_Guard)>) {
+            _Action(event);
             return true;
         } else {
-            if (Guard) {
-                if (!Guard(event)) {
+            if (_Guard) {
+                if (!_Guard(event)) {
                     return false;
                 }
             }
-            Action(event);
+            _Action(event);
             return true;
         }
     }
 };
 
-template <typename... Args>
+template <typename... _Args>
 struct table final {
-    static_assert(sizeof...(Args) > 0, "empty transition table");
+    static_assert(sizeof...(_Args) > 0, "empty transition table");
 
-    using transitions = std::tuple<Args...>;
+    using transitions = std::tuple<_Args...>;
 };
 
-template <typename T>
+template <typename _Ty>
 concept machine_t = requires {
-    typename T::initial_state;
-    typename T::transition_table;
-    typename T::transition_table::transitions;
+    typename _Ty::initial_state;
+    typename _Ty::transition_table;
+    typename _Ty::transition_table::transitions;
 };
 
-template <typename T>
+template <typename _Ty>
 concept transtion_t = requires {
-    typename T::current_state;
-    typename T::target_state;
+    typename _Ty::current_state;
+    typename _Ty::target_state;
 };
 
-template <machine_t Machine>
+template <machine_t _Machine>
 class machine final {
-    using initial_state = typename Machine::initial_state;
-    using transition_table = typename Machine::transition_table;
+    using initial_state = typename _Machine::initial_state;
+    using transition_table = typename _Machine::transition_table;
 
-    template <typename Transitions>
+    template <typename _Transitions>
     struct make_state_list;
 
-    template <typename T, typename... Args>
-    struct make_state_list<std::tuple<T, Args...>> {
-        using type = detail::concat_tuple_t<std::tuple<typename T::current_state, typename T::target_state>,
-                                            typename make_state_list<std::tuple<Args...>>::type>;
+    template <typename _Ty, typename... _Args>
+    struct make_state_list<std::tuple<_Ty, _Args...>> {
+        using type = detail::concat_tuple_t<std::tuple<typename _Ty::current_state, typename _Ty::target_state>,
+                                            typename make_state_list<std::tuple<_Args...>>::type>;
     };
 
-    template <typename T>
-    struct make_state_list<std::tuple<T>> {
-        using type = std::tuple<typename T::current_state, typename T::target_state>;
+    template <typename _Ty>
+    struct make_state_list<std::tuple<_Ty>> {
+        using type = std::tuple<typename _Ty::current_state, typename _Ty::target_state>;
     };
 
-    using states = detail::unique_type_tuple<typename make_state_list<typename transition_table::transitions>::type>;
+    template <typename _Transitions>
+    using make_state_list_t = typename make_state_list<_Transitions>::type;
+
+    using states = detail::unique_type_tuple<make_state_list_t<typename transition_table::transitions>>;
     static_assert(detail::has_type_v<states, initial_state>, "bad initial state");
 
     std::size_t state_index_{detail::type_index_v<initial_state, states>};
 
-    template <typename Table, typename Event>
+    template <typename _Table, typename _Event>
     struct select_transitions;
 
-    template <typename... Args, typename Event>
-    struct select_transitions<std::tuple<Args...>, Event> {
-        template <typename T>
-        using predicate = std::is_same<typename T::event, Event>;
-        using type = detail::select_types_t<predicate, Args...>;
+    template <typename... _Args, typename _Event>
+    struct select_transitions<std::tuple<_Args...>, _Event> {
+        template <typename _Ty>
+        using predicate = std::is_same<typename _Ty::event, _Event>;
+        using type = detail::select_types_t<predicate, _Args...>;
     };
 
-    template <typename Table, typename Event>
-    using select_transitions_t = typename select_transitions<Table, Event>::type;
+    template <typename _Table, typename _Event>
+    using select_transitions_t = typename select_transitions<_Table, _Event>::type;
 
-    template <typename Transitions, typename Event>
+    template <typename _Transitions, typename _Event>
     struct dispatcher;
 
-    template <transtion_t T, typename... Args, typename Event>
-    struct dispatcher<std::tuple<T, Args...>, Event> {
-        static bool on(std::size_t& state_index, const Event& event) {
-            constexpr auto index = detail::type_index_v<typename T::current_state, states>;
+    template <transtion_t _Ty, typename... _Args, typename _Event>
+    struct dispatcher<std::tuple<_Ty, _Args...>, _Event> {
+        static bool on(std::size_t& state_index, const _Event& event) {
+            constexpr auto index = detail::type_index_v<typename _Ty::current_state, states>;
             if (index == state_index) {
-                if (T::on(event)) {
-                    constexpr auto target_state = detail::type_index_v<typename T::target_state, states>;
+                if (_Ty::on(event)) {
+                    constexpr auto target_state = detail::type_index_v<typename _Ty::target_state, states>;
                     state_index = target_state;
                     return true;
                 }
                 return false;
             }
 
-            return dispatcher<std::tuple<Args...>, Event>::on(state_index, event);
+            return dispatcher<std::tuple<_Args...>, _Event>::on(state_index, event);
         }
     };
 
-    template <typename Event>
-    struct dispatcher<std::tuple<>, Event> {
-        static bool on(std::size_t& state_index, const Event&) {
+    template <typename _Event>
+    struct dispatcher<std::tuple<>, _Event> {
+        static bool on(std::size_t& state_index, const _Event&) {
             // no transition
             return false;
         }
@@ -239,17 +243,20 @@ public:
     machine() noexcept = default;
     ~machine() = default;
 
-    template <typename Event>
-    bool on(const Event& event) {
-        using transitions = select_transitions_t<typename transition_table::transitions, Event>;
-        return dispatcher<transitions, Event>::on(this->state_index_, event);
+    machine(const machine&) = delete;
+    machine& operator=(const machine&) = delete;
+
+    template <typename _Event>
+    bool on(const _Event& event) {
+        using transitions = select_transitions_t<typename transition_table::transitions, _Event>;
+        return dispatcher<transitions, _Event>::on(this->state_index_, event);
     }
 
-    template <typename State>
-    bool is(const State& state) const noexcept {
-        static_assert(detail::has_type_v<states, State>, "transtion table have no event");
+    template <typename _State>
+    bool is(const _State& state) const noexcept {
+        static_assert(detail::has_type_v<states, _State>, "transtion table have no event");
 
-        constexpr auto index = detail::type_index_v<State, states>;
+        constexpr auto index = detail::type_index_v<_State, states>;
         return index == this->state_index_;
     }
 };
